@@ -4,8 +4,9 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
 from config import SCAN_TIMEOUT
+from handlers._helpers import arg_command
 from services.reports import save_report, send_report
-from services.shell import ScanLock, run_command, scan_lock
+from services.shell import run_command, scan_lock
 from services.validators import ValidationError, validate_ipv4
 from utils.logger import logger
 
@@ -34,18 +35,8 @@ async def _run_nmap(target_ip: str, full: bool = False) -> str:
 
 
 @scan_router.message(Command("scan"))
-async def cmd_scan(message: types.Message):
-    args = message.text.split(maxsplit=1)
-    if len(args) < 2:
-        await message.answer("Usage: /scan \u003cIP\u003e")
-        return
-
-    try:
-        target_ip = validate_ipv4(args[1], allow_private=True)
-    except ValidationError as exc:
-        await message.answer(f"❌ {exc}")
-        return
-
+@arg_command(validate_ipv4, usage="Usage: /scan <IP>")
+async def cmd_scan(message: types.Message, target_ip: str):
     if not await scan_lock.acquire(f"scan {target_ip}"):
         await message.answer("⏳ Another scan is already running. Wait or use /cancel.")
         return
@@ -63,11 +54,13 @@ async def cmd_scan(message: types.Message):
         scan_lock.release()
 
 
+# scanfull needs the FSM ``state`` dependency in addition to the argument, so it
+# parses/validates inline rather than via @arg_command (which passes only message).
 @scan_router.message(Command("scanfull"))
 async def cmd_scanfull(message: types.Message, state: FSMContext):
-    args = message.text.split(maxsplit=1)
+    args = (message.text or "").split(maxsplit=1)
     if len(args) < 2:
-        await message.answer("Usage: /scanfull \u003cIP\u003e")
+        await message.answer("Usage: /scanfull <IP>")
         return
 
     try:

@@ -4,18 +4,22 @@ import secrets
 import urllib.parse
 import uuid
 from datetime import datetime, timezone
+from functools import partial
 
 import aiohttp
 from aiogram import Router, types
 from aiogram.filters import Command
 
+from handlers._helpers import arg_command
 from services.ai_summarizer import summarize
 from services.reports import get_last_report, send_report
 from services.shell import run_command
-from services.validators import ValidationError, validate_domain, validate_email, validate_ipv4
+from services.validators import validate_email, validate_ipv4
 from utils.logger import logger
 
 utils_router = Router()
+
+_validate_public_ip = partial(validate_ipv4, allow_private=False)
 
 
 @utils_router.message(Command("password"))
@@ -39,13 +43,8 @@ async def cmd_uuid(message: types.Message):
 
 
 @utils_router.message(Command("hash"))
-async def cmd_hash(message: types.Message):
-    args = message.text.split(maxsplit=1)
-    if len(args) < 2:
-        await message.answer("Usage: /hash \u003ctext\u003e")
-        return
-
-    text = args[1]
+@arg_command(usage="Usage: /hash <text>")
+async def cmd_hash(message: types.Message, text: str):
     lines = [
         f"🔐 Hashes for: `{text[:50]}`",
         f"MD5: `{hashlib.md5(text.encode()).hexdigest()}`",
@@ -56,26 +55,17 @@ async def cmd_hash(message: types.Message):
 
 
 @utils_router.message(Command("b64"))
-async def cmd_b64(message: types.Message):
-    args = message.text.split(maxsplit=1)
-    if len(args) < 2:
-        await message.answer("Usage: /b64 \u003ctext\u003e — encodes text to base64")
-        return
-
-    text = args[1]
+@arg_command(usage="Usage: /b64 <text> — encodes text to base64")
+async def cmd_b64(message: types.Message, text: str):
     encoded = base64.b64encode(text.encode()).decode()
     await message.answer(f"🔁 Base64:\n`{encoded}`", parse_mode="Markdown")
 
 
 @utils_router.message(Command("b64decode"))
-async def cmd_b64decode(message: types.Message):
-    args = message.text.split(maxsplit=1)
-    if len(args) < 2:
-        await message.answer("Usage: /b64decode \u003cbase64\u003e")
-        return
-
+@arg_command(usage="Usage: /b64decode <base64>")
+async def cmd_b64decode(message: types.Message, data: str):
     try:
-        decoded = base64.b64decode(args[1]).decode("utf-8", errors="replace")
+        decoded = base64.b64decode(data).decode("utf-8", errors="replace")
     except Exception as exc:
         await message.answer(f"❌ Decode error: {exc}")
         return
@@ -84,31 +74,15 @@ async def cmd_b64decode(message: types.Message):
 
 
 @utils_router.message(Command("urlencode"))
-async def cmd_urlencode(message: types.Message):
-    args = message.text.split(maxsplit=1)
-    if len(args) < 2:
-        await message.answer("Usage: /urlencode \u003ctext\u003e")
-        return
-
-    import urllib.parse
-
-    encoded = urllib.parse.quote(args[1])
+@arg_command(usage="Usage: /urlencode <text>")
+async def cmd_urlencode(message: types.Message, text: str):
+    encoded = urllib.parse.quote(text)
     await message.answer(f"🔗 URL-encoded:\n`{encoded}`", parse_mode="Markdown")
 
 
 @utils_router.message(Command("email"))
-async def cmd_email(message: types.Message):
-    args = message.text.split(maxsplit=1)
-    if len(args) < 2:
-        await message.answer("Usage: /email \u003cemail\u003e")
-        return
-
-    try:
-        email = validate_email(args[1])
-    except ValidationError as exc:
-        await message.answer(f"❌ {exc}")
-        return
-
+@arg_command(validate_email, usage="Usage: /email <email>")
+async def cmd_email(message: types.Message, email: str):
     domain = email.split("@", 1)[1]
     result = await run_command(["dig", "+short", "MX", domain], timeout=30)
     mx = result.stdout.strip() or "No MX records found."
@@ -119,13 +93,8 @@ async def cmd_email(message: types.Message):
 
 
 @utils_router.message(Command("weather"))
-async def cmd_weather(message: types.Message):
-    args = message.text.split(maxsplit=1)
-    if len(args) < 2:
-        await message.answer("Usage: /weather \u003ccity\u003e")
-        return
-
-    city = args[1].strip()
+@arg_command(usage="Usage: /weather <city>")
+async def cmd_weather(message: types.Message, city: str):
     try:
         async with aiohttp.ClientSession() as session:
             geo_url = "https://geocoding-api.open-meteo.com/v1/search"
@@ -166,18 +135,8 @@ async def cmd_weather(message: types.Message):
 
 
 @utils_router.message(Command("reverseip"))
-async def cmd_reverseip(message: types.Message):
-    args = message.text.split(maxsplit=1)
-    if len(args) < 2:
-        await message.answer("Usage: /reverseip \u003cIP\u003e")
-        return
-
-    try:
-        ip = validate_ipv4(args[1], allow_private=False)
-    except ValidationError as exc:
-        await message.answer(f"❌ {exc}")
-        return
-
+@arg_command(_validate_public_ip, usage="Usage: /reverseip <IP>")
+async def cmd_reverseip(message: types.Message, ip: str):
     logger.info("Reverse DNS requested for %s", ip)
     result = await run_command(["dig", "+short", "-x", ip], timeout=30)
     output = result.stdout.strip() or "No PTR record found."

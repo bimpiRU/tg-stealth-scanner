@@ -4,9 +4,10 @@ from aiogram import Router, types
 from aiogram.filters import Command
 
 from config import OSINT_TIMEOUT
+from handlers._helpers import arg_command
 from services.reports import build_report, save_report, send_report
 from services.shell import run_command
-from services.validators import ValidationError, validate_domain
+from services.validators import validate_domain
 from utils.logger import logger
 
 osint_router = Router()
@@ -48,18 +49,8 @@ async def _run_osint(domain: str) -> str:
 
 
 @osint_router.message(Command("osint"))
-async def cmd_osint(message: types.Message):
-    args = message.text.split(maxsplit=1)
-    if len(args) < 2:
-        await message.answer("Usage: /osint \u003cdomain\u003e")
-        return
-
-    try:
-        domain = validate_domain(args[1])
-    except ValidationError as exc:
-        await message.answer(f"❌ {exc}")
-        return
-
+@arg_command(validate_domain, usage="Usage: /osint <domain>")
+async def cmd_osint(message: types.Message, domain: str):
     logger.info("OSINT started for %s by admin", domain)
     await message.answer(f"🔍 Starting passive OSINT for `{domain}`...", parse_mode="Markdown")
 
@@ -69,18 +60,8 @@ async def cmd_osint(message: types.Message):
 
 
 @osint_router.message(Command("dns"))
-async def cmd_dns(message: types.Message):
-    args = message.text.split(maxsplit=1)
-    if len(args) < 2:
-        await message.answer("Usage: /dns \u003cdomain\u003e")
-        return
-
-    try:
-        domain = validate_domain(args[1])
-    except ValidationError as exc:
-        await message.answer(f"❌ {exc}")
-        return
-
+@arg_command(validate_domain, usage="Usage: /dns <domain>")
+async def cmd_dns(message: types.Message, domain: str):
     logger.info("DNS lookup started for %s by admin", domain)
     await message.answer(f"🌐 Resolving DNS records for `{domain}`...", parse_mode="Markdown")
 
@@ -96,18 +77,8 @@ async def cmd_dns(message: types.Message):
 
 
 @osint_router.message(Command("subdomains"))
-async def cmd_subdomains(message: types.Message):
-    args = message.text.split(maxsplit=1)
-    if len(args) < 2:
-        await message.answer("Usage: /subdomains \u003cdomain\u003e")
-        return
-
-    try:
-        domain = validate_domain(args[1])
-    except ValidationError as exc:
-        await message.answer(f"❌ {exc}")
-        return
-
+@arg_command(validate_domain, usage="Usage: /subdomains <domain>")
+async def cmd_subdomains(message: types.Message, domain: str):
     logger.info("Subdomain enumeration started for %s by admin", domain)
     await message.answer(f"🧩 Enumerating subdomains for `{domain}`...", parse_mode="Markdown")
 

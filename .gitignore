@@ -4,3 +4,6 @@ __pycache__/
 results/
 logs/
 *.log
+.venv/
+.venv_test/
+.pytest_cache/

@@ -9,6 +9,7 @@ from config import MAX_MESSAGE_LENGTH, RESULTS_DIR
 
 
 _last_report: Dict[int, str] = {}
+_MAX_TRACKED_USERS = 16
 
 
 def save_report(prefix: str, target: str, content: str) -> Path:
@@ -45,6 +46,10 @@ def _trim_partial_entity(text: str) -> str:
 
 
 def store_last_report(user_id: int, text: str) -> None:
+    # Bound memory: keep only the most recent N users (FIFO). In practice a
+    # single admin uses the bot, but this keeps the cache from growing unbounded.
+    if user_id not in _last_report and len(_last_report) >= _MAX_TRACKED_USERS:
+        _last_report.pop(next(iter(_last_report)))
     _last_report[user_id] = text
 
 
