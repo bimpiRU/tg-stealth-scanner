@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from aiogram import Bot, Router, types
 from aiogram.filters import Command
+from aiogram.filters.callback_data import CallbackData
 
 from services.shell import scan_lock
 from utils.logger import logger
@@ -11,6 +12,26 @@ from utils.logger import logger
 admin_router = Router()
 
 _START_TIME = datetime.now(timezone.utc)
+
+
+# Typed callback payloads replace ad-hoc "prefix:value" strings parsed by hand.
+class Nav(CallbackData, prefix="nav"):
+    """Navigate the menu tree. ``to`` is one of the menu screens."""
+
+    to: str  # main | osint | scan | network | tools | help
+
+
+class Hint(CallbackData, prefix="hint"):
+    """Show usage hint for a command. ``key`` indexes ``_HINTS``."""
+
+    key: str
+
+
+class Run(CallbackData, prefix="run"):
+    """Run a no-argument command directly from a button. ``key`` names it."""
+
+    key: str
+
 
 _ABOUT_TEXT = (
     "⚠️ *Legal notice*\n\n"
@@ -27,42 +48,42 @@ def _main_menu_keyboard() -> types.InlineKeyboardMarkup:
     return types.InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                types.InlineKeyboardButton(text="🔍 OSINT", callback_data="cat:osint"),
-                types.InlineKeyboardButton(text="🛰 Scan", callback_data="cat:scan"),
+                types.InlineKeyboardButton(text="🔍 OSINT", callback_data=Nav(to="osint").pack()),
+                types.InlineKeyboardButton(text="🛰 Scan", callback_data=Nav(to="scan").pack()),
             ],
             [
-                types.InlineKeyboardButton(text="🌐 Network", callback_data="cat:network"),
-                types.InlineKeyboardButton(text="🧰 Tools", callback_data="cat:tools"),
+                types.InlineKeyboardButton(text="🌐 Network", callback_data=Nav(to="network").pack()),
+                types.InlineKeyboardButton(text="🧰 Tools", callback_data=Nav(to="tools").pack()),
             ],
             [
-                types.InlineKeyboardButton(text="ℹ️ Status", callback_data="cmd:status"),
-                types.InlineKeyboardButton(text="📖 Help", callback_data="cat:help"),
+                types.InlineKeyboardButton(text="ℹ️ Status", callback_data=Run(key="status").pack()),
+                types.InlineKeyboardButton(text="📖 Help", callback_data=Nav(to="help").pack()),
             ],
             [
-                types.InlineKeyboardButton(text="⚠️ Legal", callback_data="cmd:about"),
+                types.InlineKeyboardButton(text="⚠️ Legal", callback_data=Run(key="about").pack()),
             ],
         ]
     )
 
 
 def _back_button() -> list[types.InlineKeyboardButton]:
-    return [types.InlineKeyboardButton(text="⬅️ Back", callback_data="menu:main")]
+    return [types.InlineKeyboardButton(text="⬅️ Back", callback_data=Nav(to="main").pack())]
 
 
 def _osint_keyboard() -> types.InlineKeyboardMarkup:
     return types.InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                types.InlineKeyboardButton(text="🔍 /osint", callback_data="hint:osint"),
-                types.InlineKeyboardButton(text="🌐 /dns", callback_data="hint:dns"),
+                types.InlineKeyboardButton(text="🔍 /osint", callback_data=Hint(key="osint").pack()),
+                types.InlineKeyboardButton(text="🌐 /dns", callback_data=Hint(key="dns").pack()),
             ],
             [
-                types.InlineKeyboardButton(text="🧩 /subdomains", callback_data="hint:subdomains"),
-                types.InlineKeyboardButton(text="📡 /headers", callback_data="hint:headers"),
+                types.InlineKeyboardButton(text="🧩 /subdomains", callback_data=Hint(key="subdomains").pack()),
+                types.InlineKeyboardButton(text="📡 /headers", callback_data=Hint(key="headers").pack()),
             ],
             [
-                types.InlineKeyboardButton(text="🔒 /ssl", callback_data="hint:ssl"),
-                types.InlineKeyboardButton(text="📚 /wayback", callback_data="hint:wayback"),
+                types.InlineKeyboardButton(text="🔒 /ssl", callback_data=Hint(key="ssl").pack()),
+                types.InlineKeyboardButton(text="📚 /wayback", callback_data=Hint(key="wayback").pack()),
             ],
             _back_button(),
         ]
@@ -73,11 +94,11 @@ def _scan_keyboard() -> types.InlineKeyboardMarkup:
     return types.InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                types.InlineKeyboardButton(text="🛰 /scan", callback_data="hint:scan"),
-                types.InlineKeyboardButton(text="🚀 /scanfull", callback_data="hint:scanfull"),
+                types.InlineKeyboardButton(text="🛰 /scan", callback_data=Hint(key="scan").pack()),
+                types.InlineKeyboardButton(text="🚀 /scanfull", callback_data=Hint(key="scanfull").pack()),
             ],
             [
-                types.InlineKeyboardButton(text="⛔ /cancel", callback_data="cmd:cancel"),
+                types.InlineKeyboardButton(text="⛔ /cancel", callback_data=Run(key="cancel").pack()),
             ],
             _back_button(),
         ]
@@ -88,12 +109,12 @@ def _network_keyboard() -> types.InlineKeyboardMarkup:
     return types.InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                types.InlineKeyboardButton(text="🌍 /ipinfo", callback_data="hint:ipinfo"),
-                types.InlineKeyboardButton(text="🏓 /ping", callback_data="hint:ping"),
+                types.InlineKeyboardButton(text="🌍 /ipinfo", callback_data=Hint(key="ipinfo").pack()),
+                types.InlineKeyboardButton(text="🏓 /ping", callback_data=Hint(key="ping").pack()),
             ],
             [
-                types.InlineKeyboardButton(text="🛤 /traceroute", callback_data="hint:traceroute"),
-                types.InlineKeyboardButton(text="🔄 /reverseip", callback_data="hint:reverseip"),
+                types.InlineKeyboardButton(text="🛤 /traceroute", callback_data=Hint(key="traceroute").pack()),
+                types.InlineKeyboardButton(text="🔄 /reverseip", callback_data=Hint(key="reverseip").pack()),
             ],
             _back_button(),
         ]
@@ -104,24 +125,24 @@ def _tools_keyboard() -> types.InlineKeyboardMarkup:
     return types.InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                types.InlineKeyboardButton(text="🔑 /password", callback_data="cmd:password"),
-                types.InlineKeyboardButton(text="🆔 /uuid", callback_data="cmd:uuid"),
+                types.InlineKeyboardButton(text="🔑 /password", callback_data=Run(key="password").pack()),
+                types.InlineKeyboardButton(text="🆔 /uuid", callback_data=Run(key="uuid").pack()),
             ],
             [
-                types.InlineKeyboardButton(text="🔐 /hash", callback_data="hint:hash"),
-                types.InlineKeyboardButton(text="🔁 /b64", callback_data="hint:b64"),
+                types.InlineKeyboardButton(text="🔐 /hash", callback_data=Hint(key="hash").pack()),
+                types.InlineKeyboardButton(text="🔁 /b64", callback_data=Hint(key="b64").pack()),
             ],
             [
-                types.InlineKeyboardButton(text="🔁 /b64decode", callback_data="hint:b64decode"),
-                types.InlineKeyboardButton(text="🔗 /urlencode", callback_data="hint:urlencode"),
+                types.InlineKeyboardButton(text="🔁 /b64decode", callback_data=Hint(key="b64decode").pack()),
+                types.InlineKeyboardButton(text="🔗 /urlencode", callback_data=Hint(key="urlencode").pack()),
             ],
             [
-                types.InlineKeyboardButton(text="📧 /email", callback_data="hint:email"),
-                types.InlineKeyboardButton(text="🌤 /weather", callback_data="hint:weather"),
+                types.InlineKeyboardButton(text="📧 /email", callback_data=Hint(key="email").pack()),
+                types.InlineKeyboardButton(text="🌤 /weather", callback_data=Hint(key="weather").pack()),
             ],
             [
-                types.InlineKeyboardButton(text="🕒 /timestamp", callback_data="cmd:timestamp"),
-                types.InlineKeyboardButton(text="🧠 /summary", callback_data="cmd:summary"),
+                types.InlineKeyboardButton(text="🕒 /timestamp", callback_data=Run(key="timestamp").pack()),
+                types.InlineKeyboardButton(text="🧠 /summary", callback_data=Run(key="summary").pack()),
             ],
             _back_button(),
         ]
@@ -149,6 +170,18 @@ _HINTS = {
     "weather": "🌤 Type: `/weather <city>`\nExample: `/weather Tashkent`",
 }
 
+_NAV_SCREENS = {
+    "osint": ("🔍 *OSINT menu*\n\nSelect a command or type it manually:", _osint_keyboard),
+    "scan": (
+        "🛰 *Scan menu*\n\nSelect a command or type it manually:\n\n"
+        "⚠️ Only scan targets you own or have permission to test.",
+        _scan_keyboard,
+    ),
+    "network": ("🌐 *Network menu*\n\nSelect a command or type it manually:", _network_keyboard),
+    "tools": ("🧰 *Utility tools*\n\nSelect a command:", _tools_keyboard),
+    "main": ("👁 *Stealth scanner online.*\n\nChoose a category:", _main_menu_keyboard),
+}
+
 
 @admin_router.message(Command("start"))
 async def cmd_start(message: types.Message):
@@ -160,75 +193,27 @@ async def cmd_start(message: types.Message):
     )
 
 
-@admin_router.callback_query(lambda c: c.data == "menu:main")
-async def cb_main_menu(callback: types.CallbackQuery):
+@admin_router.callback_query(Nav.filter())
+async def cb_nav(callback: types.CallbackQuery, callback_data: Nav):
     await callback.answer()
-    await callback.message.edit_text(
-        "👁 *Stealth scanner online.*\n\nChoose a category:",
-        parse_mode="Markdown",
-        reply_markup=_main_menu_keyboard(),
-    )
+    if callback_data.to == "help":
+        await cmd_help(callback.message)
+        return
+    text, keyboard = _NAV_SCREENS[callback_data.to]
+    await callback.message.edit_text(text, parse_mode="Markdown", reply_markup=keyboard())
 
 
-@admin_router.callback_query(lambda c: c.data == "cat:help")
-async def cb_help(callback: types.CallbackQuery):
+@admin_router.callback_query(Hint.filter())
+async def cb_hint(callback: types.CallbackQuery, callback_data: Hint):
     await callback.answer()
-    await cmd_help(callback.message)
-
-
-@admin_router.callback_query(lambda c: c.data == "cat:osint")
-async def cb_osint_menu(callback: types.CallbackQuery):
-    await callback.answer()
-    await callback.message.edit_text(
-        "🔍 *OSINT menu*\n\nSelect a command or type it manually:",
-        parse_mode="Markdown",
-        reply_markup=_osint_keyboard(),
-    )
-
-
-@admin_router.callback_query(lambda c: c.data == "cat:scan")
-async def cb_scan_menu(callback: types.CallbackQuery):
-    await callback.answer()
-    await callback.message.edit_text(
-        "🛰 *Scan menu*\n\nSelect a command or type it manually:\n\n"
-        "⚠️ Only scan targets you own or have permission to test.",
-        parse_mode="Markdown",
-        reply_markup=_scan_keyboard(),
-    )
-
-
-@admin_router.callback_query(lambda c: c.data == "cat:network")
-async def cb_network_menu(callback: types.CallbackQuery):
-    await callback.answer()
-    await callback.message.edit_text(
-        "🌐 *Network menu*\n\nSelect a command or type it manually:",
-        parse_mode="Markdown",
-        reply_markup=_network_keyboard(),
-    )
-
-
-@admin_router.callback_query(lambda c: c.data == "cat:tools")
-async def cb_tools_menu(callback: types.CallbackQuery):
-    await callback.answer()
-    await callback.message.edit_text(
-        "🧰 *Utility tools*\n\nSelect a command:",
-        parse_mode="Markdown",
-        reply_markup=_tools_keyboard(),
-    )
-
-
-@admin_router.callback_query(lambda c: c.data.startswith("hint:"))
-async def cb_hint(callback: types.CallbackQuery):
-    await callback.answer()
-    key = callback.data.split(":", 1)[1]
-    text = _HINTS.get(key, "Unknown command.")
+    text = _HINTS.get(callback_data.key, "Unknown command.")
     await callback.message.answer(text, parse_mode="Markdown")
 
 
-@admin_router.callback_query(lambda c: c.data.startswith("cmd:"))
-async def cb_run_command(callback: types.CallbackQuery):
-    key = callback.data.split(":", 1)[1]
+@admin_router.callback_query(Run.filter())
+async def cb_run_command(callback: types.CallbackQuery, callback_data: Run):
     await callback.answer()
+    key = callback_data.key
     if key == "password":
         from handlers.utils import cmd_password
         await cmd_password(callback.message)
