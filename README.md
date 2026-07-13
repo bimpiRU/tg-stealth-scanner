@@ -18,7 +18,7 @@
 - 🌐 **Сеть** — геолокация IP, ping, traceroute, reverse DNS
 - 🧰 **Утилиты** — генератор паролей, UUID, хеши, base64, URL-кодирование, погода, проверка email
 - 🧠 **AI-суммаризация** — краткий пересказ отчётов через любой OpenAI-совместимый API
-- 🔐 **Безопасность** — фильтрация ввода от Command Injection, rate-limit, доступ только для `ADMIN_ID`
+- 🔐 **Безопасность** — фильтрация ввода от Command Injection, rate-limit, доступ только для администратора
 - 🎛 **Интерфейс** — категории и команды в виде inline-кнопок
 
 ---
@@ -28,8 +28,8 @@
 ### 1. Клонируй репозиторий
 
 ```bash
-git clone https://github.com/bimpiRU/BotCreate.git
-cd BotCreate/tg_stealth_scanner
+git clone https://github.com/bimpiRU/tg-stealth-scanner.git
+cd tg-stealth-scanner
 ```
 
 ### 2. Настрой переменные окружения
@@ -38,12 +38,12 @@ cd BotCreate/tg_stealth_scanner
 cp .env.example .env
 ```
 
-Отредактируй `.env`:
+Отредактируй `.env` (этот файл никогда не попадает в git):
 
 ```env
-BOT_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
-ADMIN_ID=1724243606
-ADMIN_USERNAME=your_username
+BOT_TOKEN=your_bot_token_from_botfather
+ADMIN_ID=your_telegram_user_id
+ADMIN_USERNAME=your_telegram_username
 ```
 
 Получи токен у [@BotFather](https://t.me/BotFather), а свой `ADMIN_ID` — у [@userinfobot](https://t.me/userinfobot).
@@ -103,12 +103,13 @@ AI_MAX_TOKENS=800
 
 ---
 
-## 🛡 Безопасность и легальность
+## 🛡 Безопасность, приватность и легальность
 
-- Бот работает **только** для пользователя с `ADMIN_ID`.
-- Все пользовательские аргументы проверяются регулярками; запрещены символы `; & | $ \` ( ) { } < > * ? [ ] ! # = ~`.
-- Сканирование запускается через `subprocess` **без** `shell=True`.
-- `nmap -sS` требует `NET_RAW` / `NET_ADMIN` — они уже указаны в `docker-compose.yml`.
+- 🔑 **Токены и ID не хранятся в репозитории.** Все секреты читаются из файла `.env`, который добавлен в `.gitignore`.
+- 👤 Бот работает **только** для пользователя с указанным `ADMIN_ID`.
+- 🚫 Все пользовательские аргументы проверяются регулярками; запрещены символы `; & | $ \` ( ) { } < > * ? [ ] ! # = ~`.
+- 🐚 Сканирование запускается через `subprocess` **без** `shell=True`.
+- 📡 `nmap -sS` требует `NET_RAW` / `NET_ADMIN` — они уже указаны в `docker-compose.yml`.
 - ⚠️ **Используй только на своих системах или с письменного разрешения владельца.**
 
 ---
@@ -121,11 +122,11 @@ tg_stealth_scanner/
 ├── config.py           # Конфигурация из env
 ├── Dockerfile          # Сборка на python:3.12-slim + nmap/whois/curl/dnsutils
 ├── docker-compose.yml  # Запуск контейнера
-├── .env.example        # Шаблон переменных
+├── .env.example        # Шаблон переменных (без реальных секретов)
 ├── handlers/           # Обработчики команд
 ├── middlewares/        # Фильтр админа и rate-limit
 ├── services/           # Сканеры, валидаторы, AI, отчёты
-├── scripts/            # Health-check + внешний мониторинг
+├── scripts/            # Health-check + внешний мониторинг + автозапуск Windows
 └── utils/              # Логгер
 ```
 
@@ -155,8 +156,18 @@ python scripts/monitor.py
 Файл `scripts/monitor.py` проверяет, запущен ли контейнер, и шлёт алерт в Telegram при сбое. Добавь в планировщик задач Windows или cron:
 
 ```bash
-*/5 * * * * cd /path/to/BotCreate/tg_stealth_scanner && python scripts/monitor.py
+*/5 * * * * cd /path/to/tg-stealth-scanner && python scripts/monitor.py
 ```
+
+### 🔄 Автозапуск Windows
+
+Ярлык для автозапуска создаётся командой:
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File "scripts\install-startup-shortcut.ps1"
+```
+
+После этого контейнер будет подниматься автоматически при входе в Windows.
 
 ---
 
