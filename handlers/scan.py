@@ -24,7 +24,9 @@ async def _run_nmap(target_ip: str, full: bool = False) -> str:
         cmd = ["nmap", "-sS", "-T2", "-F", target_ip]
         timeout = SCAN_TIMEOUT
 
-    result = await run_command(cmd, timeout=timeout)
+    result = await run_command(cmd, timeout=timeout, cancellable=True)
+    if scan_lock.cancelled:
+        return "🛑 Scan cancelled by admin."
     output = result.stdout if result.returncode == 0 else result.stderr
     if not output.strip():
         output = "Scan completed but produced no output."

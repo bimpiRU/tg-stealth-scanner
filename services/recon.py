@@ -7,6 +7,11 @@ from services.validators import ValidationError, validate_domain, validate_ipv4
 
 async def ip_info(ip: str, timeout: int = 30) -> str:
     """Fetch public IP geolocation via ip-api.com (free, no key)."""
+    try:
+        validate_ipv4(ip, allow_private=False)
+    except ValidationError as exc:
+        return str(exc)
+
     result = await run_command(
         ["curl", "-s", f"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query"],
         timeout=timeout,
@@ -58,13 +63,19 @@ async def ssl_info(domain: str, timeout: int = 30) -> str:
     except ValidationError as exc:
         return str(exc)
 
-    result = await run_command(
-        [
-            "sh",
-            "-c",
-            f"echo | openssl s_client -servername {domain} -connect {domain}:443 2>/dev/null | openssl x509 -noout -subject -issuer -dates -serial",
-        ],
+    # Two argv-only steps (no shell): fetch the handshake, then parse the cert by
+    # piping the PEM into `openssl x509` via stdin. Avoids the sole `sh -c` string.
+    handshake = await run_command(
+        ["openssl", "s_client", "-servername", domain, "-connect", f"{domain}:443"],
         timeout=timeout,
+    )
+    if not handshake.stdout.strip():
+        return f"Could not connect:\n{handshake.stderr or 'empty output'}"
+
+    result = await run_command(
+        ["openssl", "x509", "-noout", "-subject", "-issuer", "-dates", "-serial"],
+        timeout=timeout,
+        input_data=handshake.stdout,
     )
     if result.returncode != 0 or not result.stdout.strip():
         return f"Could not retrieve certificate:\n{result.stderr or 'empty output'}"

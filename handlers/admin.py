@@ -315,13 +315,12 @@ async def cmd_status(message: types.Message):
 
 @admin_router.message(Command("cancel"))
 async def cmd_cancel(message: types.Message):
-    if not scan_lock.is_locked:
+    task = scan_lock.current_task
+    if not scan_lock.cancel():
         await message.answer("✅ No scan is running.")
         return
-    logger.info("Admin requested cancel of %s", scan_lock.current_task)
-    await message.answer(
-        "⚠️ Cancel signal sent. The current scan will stop as soon as the subprocess finishes its current step."
-    )
+    logger.info("Admin cancelled %s", task)
+    await message.answer(f"🛑 Killed running scan: `{task}`", parse_mode="Markdown")
 
 
 async def set_bot_commands(bot: Bot) -> None:

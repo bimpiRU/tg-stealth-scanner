@@ -1,14 +1,9 @@
-import os
 from typing import Optional
 
 import aiohttp
 
+from config import AI_API_KEY, AI_BASE_URL, AI_MODEL, AI_MAX_TOKENS
 from utils.logger import logger
-
-AI_API_KEY = os.getenv("AI_API_KEY", "")
-AI_BASE_URL = os.getenv("AI_BASE_URL", "https://api.openai.com/v1")
-AI_MODEL = os.getenv("AI_MODEL", "gpt-4o-mini")
-AI_MAX_TOKENS = int(os.getenv("AI_MAX_TOKENS", "800"))
 
 _SYSTEM_PROMPT = (
     "You are a concise cybersecurity analyst. Summarize the given scan/OSINT report "
