@@ -1,0 +1,21 @@
+services:
+  tg-stealth-scanner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tg-stealth-scanner
+    env_file:
+      - .env
+    volumes:
+      - ./results:/app/results
+      - ./logs:/app/logs
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    restart: always
+    healthcheck:
+      test: ["CMD", "python", "scripts/health_check.py"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
