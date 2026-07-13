@@ -31,9 +31,10 @@ COPY middlewares/ ./middlewares/
 COPY services/ ./services/
 COPY utils/ ./utils/
 COPY scripts/ ./scripts/
+COPY data/ ./data/
 
 # Create directories for results and logs
-RUN mkdir -p /app/results /app/logs
+RUN mkdir -p /app/results /app/logs /app/data
 
 # Run as root (required for nmap -sS SYN scans)
 USER root

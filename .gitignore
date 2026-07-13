@@ -3,6 +3,7 @@ __pycache__/
 .env
 results/
 logs/
+data/proxies.txt
 *.log
 .venv/
 .venv_test/

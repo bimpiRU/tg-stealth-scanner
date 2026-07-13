@@ -1,0 +1,11 @@
+# Public proxy list for HTTP(S) recon.
+# One proxy per line. Supported formats:
+#   host:port
+#   http://host:port
+#   http://user:pass@host:port
+#
+# Use /proxyfetch in Telegram to load public lists automatically,
+# or add your own trusted proxies here.
+#
+# WARNING: public proxies may log traffic and do not anonymize raw
+# nmap/scapy packets. For real anonymity use VPN/Tor at network level.

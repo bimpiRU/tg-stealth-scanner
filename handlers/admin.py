@@ -6,6 +6,7 @@ from aiogram import Bot, Router, types
 from aiogram.filters import Command
 from aiogram.filters.callback_data import CallbackData
 
+from services.i18n import set_user_lang, t
 from services.shell import scan_lock
 from utils.logger import logger
 
@@ -162,8 +163,16 @@ def _stealth_keyboard() -> types.InlineKeyboardMarkup:
                 types.InlineKeyboardButton(text="🥷 /evade", callback_data=Hint(key="evade").pack()),
             ],
             [
+                types.InlineKeyboardButton(text="🗺 /discover", callback_data=Hint(key="discover").pack()),
+                types.InlineKeyboardButton(text="🛡 /vulns", callback_data=Hint(key="vulns").pack()),
+            ],
+            [
                 types.InlineKeyboardButton(text="🌐 /proxyinfo", callback_data=Run(key="proxyinfo").pack()),
                 types.InlineKeyboardButton(text="🧪 /proxytest", callback_data=Run(key="proxytest").pack()),
+            ],
+            [
+                types.InlineKeyboardButton(text="🔍 /proxyfind", callback_data=Run(key="proxyfind").pack()),
+                types.InlineKeyboardButton(text="🌍 /proxyfetch", callback_data=Run(key="proxyfetch").pack()),
             ],
             _back_button(),
         ]
@@ -193,6 +202,9 @@ _HINTS = {
     "scapyfrag": "💥 Type: `/scapyfrag <IP> [ports]`\nFragmented SYN scan to evade simple IDS.",
     "scapydecoy": "👻 Type: `/scapydecoy <IP> [ports]`\nSends decoy packets from random source IPs.",
     "evade": "🥷 Type: `/evade <IP>`\nnmap with randomize-hosts, spoof-mac, source-port, data-length.",
+    "discover": "🗺 Type: `/discover <subnet>`\nExample: `/discover 192.168.1.0/24`",
+    "vulns": "🛡 Type: `/vulns <target>`\nRuns nmap `--script vuln` (safe checks only).",
+    "proxyfetch": "🌍 Type: `/proxyfetch`\nFetches public proxy lists, tests them and saves working ones to data/proxies.txt.",
 }
 
 _NAV_SCREENS = {
@@ -204,19 +216,32 @@ _NAV_SCREENS = {
     ),
     "network": ("🌐 *Network menu*\n\nSelect a command or type it manually:", _network_keyboard),
     "tools": ("🧰 *Utility tools*\n\nSelect a command:", _tools_keyboard),
-    "stealth": ("🥷 *Stealth menu*\n\nAdvanced scans, evasion and proxy tools:", _stealth_keyboard),
+    "stealth": ("🥷 *Stealth menu*\n\nAdvanced scans, evasion, proxies and vulnerability discovery:", _stealth_keyboard),
     "main": ("👁 *Stealth scanner online.*\n\nChoose a category:", _main_menu_keyboard),
 }
 
 
 @admin_router.message(Command("start"))
 async def cmd_start(message: types.Message):
+    text = t("start_welcome", user_id=message.from_user.id)
     await message.answer(
-        "👁 *Stealth scanner online.*\n\n"
-        "Choose a category or type /help for the command list.",
+        text,
         parse_mode="Markdown",
         reply_markup=_main_menu_keyboard(),
     )
+
+
+@admin_router.message(Command("lang"))
+async def cmd_lang(message: types.Message):
+    args = (message.text or "").split(maxsplit=1)
+    if len(args) < 2:
+        await message.answer(t("lang_usage", user_id=message.from_user.id))
+        return
+    lang = args[1].strip().lower()
+    if set_user_lang(message.from_user.id, lang):
+        await message.answer(t("lang_set", user_id=message.from_user.id))
+    else:
+        await message.answer(t("lang_usage", user_id=message.from_user.id))
 
 
 @admin_router.callback_query(Nav.filter())
@@ -262,6 +287,12 @@ async def cb_run_command(callback: types.CallbackQuery, callback_data: Run):
     elif key == "proxytest":
         from handlers.stealth import cmd_proxytest
         await cmd_proxytest(callback.message)
+    elif key == "proxyfind":
+        from handlers.stealth import cmd_proxyfind
+        await cmd_proxyfind(callback.message)
+    elif key == "proxyfetch":
+        from handlers.stealth import cmd_proxyfetch
+        await cmd_proxyfetch(callback.message)
     elif key == "cancel":
         await cmd_cancel(callback.message)
     else:
@@ -270,24 +301,25 @@ async def cb_run_command(callback: types.CallbackQuery, callback_data: Run):
 
 @admin_router.message(Command("help"))
 async def cmd_help(message: types.Message):
+    uid = message.from_user.id
     text = (
-        "📖 *Available commands*\n\n"
-        "*OSINT*\n"
+        f"{t('help_header', user_id=uid)}\n\n"
+        f"{t('help_osint', user_id=uid)}\n"
         "/osint <domain> — passive recon\n"
         "/dns <domain> — DNS records\n"
         "/subdomains <domain> — subdomain enumeration\n"
         "/headers <domain> — HTTP headers\n"
         "/ssl <domain> — SSL certificate\n"
         "/wayback <domain> — Wayback snapshots\n\n"
-        "*Scan*\n"
+        f"{t('help_scan', user_id=uid)}\n"
         "/scan <IP> — stealth nmap SYN\n"
         "/scanfull <IP> — extended nmap\n\n"
-        "*Network*\n"
+        f"{t('help_network', user_id=uid)}\n"
         "/ipinfo <IP> — geolocation\n"
         "/ping <IP> — ping\n"
         "/traceroute <IP> — traceroute\n"
         "/reverseip <IP> — reverse DNS\n\n"
-        "*Tools*\n"
+        f"{t('help_tools', user_id=uid)}\n"
         "/password [length] — password generator\n"
         "/uuid — generate UUID\n"
         "/hash <text> — MD5/SHA1/SHA256\n"
@@ -297,19 +329,26 @@ async def cmd_help(message: types.Message):
         "/email <email> — email validation + MX\n"
         "/weather <city> — current weather\n"
         "/timestamp — current time\n\n"
-        "*Stealth*\n"
+        f"{t('help_stealth', user_id=uid)}\n"
         "/scapy <IP> [ports] — Scapy SYN scan\n"
         "/scapyfrag <IP> [ports] — fragmented SYN scan\n"
         "/scapydecoy <IP> [ports] — SYN scan with decoys\n"
         "/evade <IP> — evasive nmap\n"
+        "/discover <subnet> — network host discovery\n"
+        "/vulns <target> — vulnerability scan (nmap NSE)\n"
+        "/quickvulns <target> — fast vuln scan top 100 ports\n"
         "/proxyinfo — proxy config\n"
-        "/proxytest — test proxy\n\n"
-        "*AI*\n"
+        "/proxytest — test proxy\n"
+        "/proxyfind — find working proxy from list\n"
+        "/proxyfetch — fetch public proxy lists\n\n"
+        f"{t('help_ai', user_id=uid)}\n"
         "/summary — summarize the last report (configure AI_API_KEY)\n\n"
-        "*Service*\n"
+        f"{t('help_service', user_id=uid)}\n"
         "/status — bot status\n"
         "/about — legal notice\n"
-        "/cancel — cancel scan"
+        "/lang en|ru — switch language\n"
+        "/cancel — cancel scan\n\n"
+        f"⚠️ {t('help_footer', user_id=uid)}"
     )
     await message.answer(text, parse_mode="Markdown", reply_markup=_main_menu_keyboard())
 
@@ -321,30 +360,32 @@ async def cmd_about(message: types.Message):
 
 @admin_router.message(Command("status"))
 async def cmd_status(message: types.Message):
+    uid = message.from_user.id
     uptime = datetime.now(timezone.utc) - _START_TIME
     total, used, free = shutil.disk_usage("/app")
     lock_status = "busy" if scan_lock.is_locked else "idle"
     current = scan_lock.current_task or "none"
 
     text = (
-        f"🤖 *Status*\n"
-        f"Uptime: `{uptime}`\n"
-        f"Python: `{platform.python_version()}`\n"
-        f"Scanner: `{lock_status}`\n"
-        f"Current task: `{current}`\n"
-        f"Disk free: `{free // (2**30)} GB`"
+        f"{t('status_header', user_id=uid)}\n"
+        f"{t('status_uptime', user_id=uid)}: `{uptime}`\n"
+        f"{t('status_python', user_id=uid)}: `{platform.python_version()}`\n"
+        f"{t('status_scanner', user_id=uid)}: `{lock_status}`\n"
+        f"{t('status_current_task', user_id=uid)}: `{current}`\n"
+        f"{t('status_disk_free', user_id=uid)}: `{free // (2**30)} GB`"
     )
     await message.answer(text, parse_mode="Markdown")
 
 
 @admin_router.message(Command("cancel"))
 async def cmd_cancel(message: types.Message):
+    uid = message.from_user.id
     task = scan_lock.current_task
     if not scan_lock.cancel():
-        await message.answer("✅ No scan is running.")
+        await message.answer(t("cancel_no_scan", user_id=uid))
         return
     logger.info("Admin cancelled %s", task)
-    await message.answer(f"🛑 Killed running scan: `{task}`", parse_mode="Markdown")
+    await message.answer(t("cancel_killed", user_id=uid, task=task), parse_mode="Markdown")
 
 
 async def set_bot_commands(bot: Bot) -> None:
@@ -373,12 +414,18 @@ async def set_bot_commands(bot: Bot) -> None:
         types.BotCommand(command="weather", description="Current weather by city"),
         types.BotCommand(command="summary", description="Summarize last report with AI"),
         types.BotCommand(command="timestamp", description="Current UTC/unix time"),
+        types.BotCommand(command="lang", description="Switch language en|ru"),
         types.BotCommand(command="scapy", description="Scapy SYN scan"),
         types.BotCommand(command="scapyfrag", description="Fragmented Scapy SYN scan"),
         types.BotCommand(command="scapydecoy", description="Scapy SYN scan with decoys"),
         types.BotCommand(command="evade", description="Evasive nmap scan"),
+        types.BotCommand(command="discover", description="Network discovery subnet"),
+        types.BotCommand(command="vulns", description="Vulnerability scan (safe NSE)"),
+        types.BotCommand(command="quickvulns", description="Fast vuln scan top 100 ports"),
         types.BotCommand(command="proxyinfo", description="Show proxy config"),
         types.BotCommand(command="proxytest", description="Test proxy connectivity"),
+        types.BotCommand(command="proxyfind", description="Find working proxy from list"),
+        types.BotCommand(command="proxyfetch", description="Fetch public proxy lists"),
         types.BotCommand(command="status", description="Bot status"),
         types.BotCommand(command="about", description="Legal notice"),
         types.BotCommand(command="cancel", description="Cancel scan"),

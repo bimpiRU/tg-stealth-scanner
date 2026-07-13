@@ -4,10 +4,13 @@ This module is intentionally separate from the core handlers so it can be
 added/removed without touching the reviewed main code.
 """
 
+import asyncio
 import os
 import random
-import time
+from pathlib import Path
 from typing import Optional
+
+import aiohttp
 
 from utils.logger import logger
 
@@ -15,6 +18,8 @@ PROXY_URL = os.getenv("PROXY_URL", "").strip()
 PROXY_TYPE = os.getenv("PROXY_TYPE", "http").strip().lower()
 EVADE_MIN_DELAY = float(os.getenv("EVADE_MIN_DELAY", "0.5"))
 EVADE_MAX_DELAY = float(os.getenv("EVADE_MAX_DELAY", "2.0"))
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+PROXY_LIST_PATH = DATA_DIR / "proxies.txt"
 
 _USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
@@ -25,23 +30,56 @@ _USER_AGENTS = [
 ]
 
 
+def _load_proxy_list() -> list[str]:
+    """Load proxies from data/proxies.txt (one per line)."""
+    if not PROXY_LIST_PATH.exists():
+        # Copy example file so the user has a template and the bot keeps working.
+        example = PROXY_LIST_PATH.with_suffix(".example.txt")
+        if example.exists():
+            try:
+                PROXY_LIST_PATH.write_text(example.read_text(encoding="utf-8"), encoding="utf-8")
+            except OSError:
+                return []
+        else:
+            return []
+    lines = PROXY_LIST_PATH.read_text(encoding="utf-8").splitlines()
+    return [line.strip() for line in lines if line.strip() and not line.startswith("#")]
+
+
 def proxy_configured() -> bool:
-    return bool(PROXY_URL)
+    return bool(PROXY_URL) or bool(_load_proxy_list())
+
+
+def all_proxies() -> list[str]:
+    """Return configured proxy plus any from the list file."""
+    proxies = []
+    if PROXY_URL:
+        proxies.append(PROXY_URL)
+    proxies.extend(_load_proxy_list())
+    return proxies
+
+
+def random_proxy() -> Optional[str]:
+    proxies = all_proxies()
+    return random.choice(proxies) if proxies else None
 
 
 def proxy_dict() -> dict[str, str]:
-    """Return a requests/aiohttp compatible proxy dict when PROXY_URL is set."""
-    if not PROXY_URL:
+    """Return a requests/aiohttp compatible proxy dict when a single proxy is active."""
+    proxy = random_proxy()
+    if not proxy:
         return {}
-    return {
-        "http": PROXY_URL,
-        "https": PROXY_URL,
-    }
+    return {"http": proxy, "https": proxy}
 
 
 def aiohttp_proxy() -> Optional[str]:
-    """Return proxy URL for aiohttp ClientSession."""
-    return PROXY_URL if PROXY_URL else None
+    """Return a proxy URL for aiohttp ClientSession."""
+    proxy = random_proxy()
+    if not proxy:
+        return None
+    if "://" not in proxy:
+        proxy = f"{PROXY_TYPE}://{proxy}"
+    return proxy
 
 
 def random_user_agent() -> str:
@@ -67,7 +105,7 @@ async def jitter() -> None:
     """Random delay between requests to avoid rate-limit/trigger patterns."""
     delay = random.uniform(EVADE_MIN_DELAY, EVADE_MAX_DELAY)
     logger.info("Stealth jitter: sleeping %.2fs", delay)
-    time.sleep(delay)
+    await asyncio.sleep(delay)
 
 
 def evade_nmap_flags() -> list[str]:
@@ -82,3 +120,32 @@ def evade_nmap_flags() -> list[str]:
         "--data-length", str(random.randint(16, 64)),
         "--max-retries", "2",
     ]
+
+
+async def test_proxy(proxy: str, timeout: int = 15) -> bool:
+    """Check if a proxy can reach httpbin.org/ip."""
+    if "://" not in proxy:
+        proxy = f"{PROXY_TYPE}://{proxy}"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                "https://httpbin.org/ip",
+                proxy=proxy,
+                timeout=aiohttp.ClientTimeout(total=timeout),
+            ) as resp:
+                return resp.status == 200
+    except Exception as exc:
+        logger.debug("Proxy %s failed: %s", proxy, exc)
+        return False
+
+
+async def find_working_proxy() -> Optional[str]:
+    """Test all known proxies and return the first working one."""
+    proxies = all_proxies()
+    if not proxies:
+        return None
+    random.shuffle(proxies)
+    for proxy in proxies:
+        if await test_proxy(proxy):
+            return proxy
+    return None

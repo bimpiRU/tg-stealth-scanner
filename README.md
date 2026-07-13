@@ -15,10 +15,12 @@
 
 - 🔍 **OSINT** — `crt.sh`, `whois`, DNS-записи, `sublist3r`, HTTP-заголовки, SSL-сертификаты, Wayback Machine
 - 🛰 **Сканирование** — скрытый SYN-скан `nmap -sS -T2 -F` и расширенное сканирование по подтверждению
-- 🥷 **Стелс** — Scapy SYN-скан, фрагментация, decoy-источники, эвейзивный nmap, HTTP(S)-прокси
-- 🌐 **Сеть** — геолокация IP, ping, traceroute, reverse DNS
+- 🥷 **Стелс** — Scapy SYN-скан, фрагментация, decoy-источники, эвейзивный nmap, HTTP(S)-прокси, авто-поиск публичных прокси
+- 🌐 **Сеть** — геолокация IP, ping, traceroute, reverse DNS, обнаружение хостов в подсети (`/discover`)
+- 🛡 **Уязвимости** — безопасное сканирование nmap NSE (`/vulns`, `/quickvulns`) только для авторизованных целей
 - 🧰 **Утилиты** — генератор паролей, UUID, хеши, base64, URL-кодирование, погода, проверка email
 - 🧠 **AI-суммаризация** — краткий пересказ отчётов через любой OpenAI-совместимый API
+- 🌐 **Локализация** — переключение языка `/lang en|ru`, по умолчанию `ru`
 - 🔐 **Безопасность** — фильтрация ввода от Command Injection, rate-limit, доступ только для администратора
 - 🎛 **Интерфейс** — категории и команды в виде inline-кнопок
 
@@ -45,6 +47,7 @@ cp .env.example .env
 BOT_TOKEN=your_bot_token_from_botfather
 ADMIN_ID=your_telegram_user_id
 ADMIN_USERNAME=your_telegram_username
+DEFAULT_LANG=ru
 ```
 
 Получи токен у [@BotFather](https://t.me/BotFather), а свой `ADMIN_ID` — у [@userinfobot](https://t.me/userinfobot).
@@ -74,15 +77,20 @@ docker compose logs -f
 |-----------|---------|
 | 🔍 OSINT | `/osint`, `/dns`, `/subdomains`, `/headers`, `/ssl`, `/wayback` |
 | 🛰 Scan | `/scan`, `/scanfull`, `/cancel` |
-| 🥷 Stealth | `/scapy`, `/scapyfrag`, `/scapydecoy`, `/evade`, `/proxyinfo`, `/proxytest` |
+| 🥷 Stealth | `/scapy`, `/scapyfrag`, `/scapydecoy`, `/evade`, `/discover`, `/vulns`, `/quickvulns`, `/proxyinfo`, `/proxytest`, `/proxyfind`, `/proxyfetch` |
 | 🌐 Network | `/ipinfo`, `/ping`, `/traceroute`, `/reverseip` |
 | 🧰 Tools | `/password`, `/uuid`, `/hash`, `/b64`, `/b64decode`, `/urlencode`, `/email`, `/weather`, `/timestamp`, `/summary` |
+| ⚙️ Service | `/status`, `/about`, `/lang en\|ru` |
 
 Примеры:
 
 ```text
 /osint example.com
 /scan 1.1.1.1
+/discover 192.168.1.0/24
+/vulns 1.1.1.1
+/proxyfetch
+/lang ru
 /weather Tashkent
 /email user@example.com
 /summary
@@ -105,7 +113,7 @@ AI_MAX_TOKENS=800
 
 ---
 
-## 🥷 Стелс и прокси
+## 🥷 Стелс, прокси и сетевое обнаружение
 
 Для HTTP(S)-запросов (не для raw nmap/scapy) можно настроить прокси и джиттер:
 
@@ -116,18 +124,27 @@ EVADE_MIN_DELAY=0.5
 EVADE_MAX_DELAY=2.0
 ```
 
-Scapy-сканы (`/scapy`, `/scapyfrag`, `/scapydecoy`) работают на уровне raw-пакетов и не используют прокси. Для полной анонимизации raw-сканов нужен VPN/Tor на уровне сети хоста.
+Также можно добавить свои прокси в файл `data/proxies.txt` (один на строку) или использовать команду `/proxyfetch`, которая загружает публичные списки, проверяет их и сохраняет рабочие.
+
+⚠️ **Важно:**
+- Публичные прокси часто нестабильны и могут логировать трафик.
+- Прокси анонимизируют только HTTP(S)-запросы (OSINT, headers, ssl и т.д.).
+- Raw-сканы (`nmap -sS`, Scapy) **не** используют прокси. Для их анонимизации нужен VPN/Tor на уровне сети хоста.
+
+`/discover <subnet>` выполняет обнаружение хостов в явно указанной подсети, а `/vulns <target>` и `/quickvulns <target>` запускают только безопасные скрипты nmap NSE (`--script vuln`, `unsafe=0`) без эксплуатации.
 
 ---
 
 ## 🛡 Безопасность, приватность и легальность
 
 - 🔑 **Токены и ID не хранятся в репозитории.** Все секреты читаются из файла `.env`, который добавлен в `.gitignore`.
-- 👤 Бот работает **только** для пользователя с указанным `ADMIN_ID`.
+- 👤 Бот работает **только** для пользователя с указанным `ADMIN_ID` (и опционально `ADMIN_USERNAME`).
 - 🚫 Все пользовательские аргументы проверяются регулярками; запрещены символы `; & | $ \` ( ) { } < > * ? [ ] ! # = ~`.
 - 🐚 Сканирование запускается через `subprocess` **без** `shell=True`.
-- 📡 `nmap -sS` требует `NET_RAW` / `NET_ADMIN` — они уже указаны в `docker-compose.yml`.
+- 📡 `nmap -sS` и Scapy требуют `NET_RAW` / `NET_ADMIN` — они уже указаны в `docker-compose.yml`.
+- 🛡 Сканирование уязвимостей использует только безопасные NSE-скрипты (`unsafe=0`) и не эксплуатирует найденное.
 - ⚠️ **Используй только на своих системах или с письменного разрешения владельца.**
+- ⚠️ Не коммитьте рабочий `data/proxies.txt` — он в `.gitignore`. Шаблон хранится в `data/proxies.example.txt`.
 
 ---
 
@@ -140,9 +157,10 @@ tg_stealth_scanner/
 ├── Dockerfile          # Сборка на python:3.12-slim + nmap/whois/curl/dnsutils
 ├── docker-compose.yml  # Запуск контейнера
 ├── .env.example        # Шаблон переменных (без реальных секретов)
-├── handlers/           # Обработчики команд (admin, osint, recon, scan, utils, + stealth)
+├── data/               # Шаблон списка прокси (proxies.example.txt)
+├── handlers/           # Обработчики команд (admin, osint, recon, scan, utils, stealth)
 ├── middlewares/        # Фильтр админа и rate-limit
-├── services/           # Сканеры, валидаторы, AI, отчёты, + stealth/proxy/scapy
+├── services/           # Сканеры, валидаторы, AI, отчёты, stealth/proxy/scapy/vuln
 ├── scripts/            # Health-check + внешний мониторинг + автозапуск Windows
 └── utils/              # Логгер
 ```
