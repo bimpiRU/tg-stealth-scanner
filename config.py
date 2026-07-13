@@ -22,6 +22,10 @@ RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))
 SCAN_TIMEOUT = int(os.getenv("SCAN_TIMEOUT", "180"))
 OSINT_TIMEOUT = int(os.getenv("OSINT_TIMEOUT", "120"))
 
+# Allow scanning private/RFC1918 IPs (e.g. 192.168.x.x, 10.x.x.x, 172.16-31.x.x).
+# Only enable this when you are scanning your own network.
+ALLOW_PRIVATE_IPS = os.getenv("ALLOW_PRIVATE_IPS", "false").lower() in ("true", "1", "yes")
+
 AI_API_KEY = os.getenv("AI_API_KEY", "")
 AI_BASE_URL = os.getenv("AI_BASE_URL", "https://api.openai.com/v1")
 AI_MODEL = os.getenv("AI_MODEL", "gpt-4o-mini")

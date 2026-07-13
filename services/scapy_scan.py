@@ -17,6 +17,9 @@ from utils.logger import logger
 conf.verb = 0
 
 
+_MAX_SCAPY_PORTS = 10_000
+
+
 def _parse_ports(port_spec: str) -> list[int]:
     """Parse '80', '80,443', '1-1000' into a list of ports."""
     ports: set[int] = set()
@@ -27,6 +30,8 @@ def _parse_ports(port_spec: str) -> list[int]:
             ports.update(range(int(start), int(end) + 1))
         elif part.isdigit():
             ports.add(int(part))
+    if len(ports) > _MAX_SCAPY_PORTS:
+        raise ValueError(f"Too many ports: {len(ports)} (max {_MAX_SCAPY_PORTS}).")
     return sorted(ports)
 
 

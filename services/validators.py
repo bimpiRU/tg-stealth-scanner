@@ -1,6 +1,8 @@
 import ipaddress
 import re
 
+from config import ALLOW_PRIVATE_IPS
+
 
 FORBIDDEN_CHARS = re.compile(r"[;\&\|\$\`\(\)\{\}\\\<\>\*\?\[\]\!\#\=\~\n\r]")
 DOMAIN_REGEX = re.compile(
@@ -67,7 +69,7 @@ def validate_ipv4(value: str, allow_private: bool = True) -> str:
     except ValueError as exc:
         raise ValidationError("Invalid IP address.") from exc
 
-    if not allow_private and ip_obj.is_private:
+    if not allow_private and not ALLOW_PRIVATE_IPS and ip_obj.is_private:
         raise ValidationError("Private IP addresses are not allowed for this command.")
 
     return value

@@ -37,9 +37,14 @@ async def _fetch_text(session: aiohttp.ClientSession, url: str, timeout: int = 2
     return ""
 
 
+_MAX_PARSED_PROXIES = 5_000
+
+
 def _parse_proxies(text: str) -> list[str]:
     found: set[str] = set()
     for match in _PROXY_RE.finditer(text):
+        if len(found) >= _MAX_PARSED_PROXIES:
+            break
         host = match.group("host")
         port = match.group("port")
         # basic sanity check

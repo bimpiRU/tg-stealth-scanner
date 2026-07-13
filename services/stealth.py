@@ -30,6 +30,9 @@ _USER_AGENTS = [
 ]
 
 
+_MAX_PROXY_LIST_SIZE = 5_000
+
+
 def _load_proxy_list() -> list[str]:
     """Load proxies from data/proxies.txt (one per line)."""
     if not PROXY_LIST_PATH.exists():
@@ -43,7 +46,8 @@ def _load_proxy_list() -> list[str]:
         else:
             return []
     lines = PROXY_LIST_PATH.read_text(encoding="utf-8").splitlines()
-    return [line.strip() for line in lines if line.strip() and not line.startswith("#")]
+    proxies = [line.strip() for line in lines if line.strip() and not line.startswith("#")]
+    return proxies[:_MAX_PROXY_LIST_SIZE]
 
 
 def proxy_configured() -> bool:
