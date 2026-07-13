@@ -14,6 +14,7 @@ from handlers import (
     stealth_router,
     utils_router,
 )
+from handlers.chat import chat_router
 from middlewares import AdminMiddleware, RateLimitMiddleware
 from utils.logger import logger
 
@@ -53,6 +54,7 @@ def main() -> None:
     dp.include_router(scan_router)
     dp.include_router(stealth_router)
     dp.include_router(utils_router)
+    dp.include_router(chat_router)
 
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)

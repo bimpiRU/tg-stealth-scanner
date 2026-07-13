@@ -4,6 +4,7 @@ __pycache__/
 results/
 logs/
 data/proxies.txt
+data/agent_inbox.jsonl
 *.log
 .venv/
 .venv_test/

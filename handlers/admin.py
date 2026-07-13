@@ -6,6 +6,7 @@ from aiogram import Bot, Router, types
 from aiogram.filters import Command
 from aiogram.filters.callback_data import CallbackData
 
+from services.assistant import ask_ai
 from services.i18n import set_user_lang, t
 from services.shell import scan_lock
 from utils.logger import logger
@@ -62,6 +63,9 @@ def _main_menu_keyboard() -> types.InlineKeyboardMarkup:
             ],
             [
                 types.InlineKeyboardButton(text="📖 Help", callback_data=Nav(to="help").pack()),
+                types.InlineKeyboardButton(text="🤖 AI", callback_data=Nav(to="help").pack()),
+            ],
+            [
                 types.InlineKeyboardButton(text="⚠️ Legal", callback_data=Run(key="about").pack()),
             ],
         ]
@@ -244,6 +248,32 @@ async def cmd_lang(message: types.Message):
         await message.answer(t("lang_usage", user_id=message.from_user.id))
 
 
+@admin_router.message(Command("ask"))
+async def cmd_ask(message: types.Message):
+    """Answer a question via the configured AI."""
+    args = (message.text or "").split(maxsplit=1)
+    if len(args) < 2:
+        await message.answer(t("ask_usage", user_id=message.from_user.id))
+        return
+
+    question = args[1]
+    await message.answer("🤖 Thinking...")
+    answer = await ask_ai(question)
+    if answer is None:
+        await message.answer(
+            "🤖 AI is not configured.\n\n"
+            "Add to your `.env` file:\n"
+            "```\n"
+            "AI_API_KEY=sk-...\n"
+            "AI_BASE_URL=https://api.openai.com/v1\n"
+            "AI_MODEL=gpt-4o-mini\n"
+            "```",
+            parse_mode="Markdown",
+        )
+        return
+    await message.answer(answer, parse_mode="Markdown")
+
+
 @admin_router.callback_query(Nav.filter())
 async def cb_nav(callback: types.CallbackQuery, callback_data: Nav):
     await callback.answer()
@@ -342,11 +372,13 @@ async def cmd_help(message: types.Message):
         "/proxyfind — find working proxy from list\n"
         "/proxyfetch — fetch public proxy lists\n\n"
         f"{t('help_ai', user_id=uid)}\n"
-        "/summary — summarize the last report (configure AI_API_KEY)\n\n"
+        "/summary — summarize the last report (configure AI_API_KEY)\n"
+        "/ask <question> — ask the AI assistant\n"
+        f"{t('chat_hint', user_id=uid)}\n\n"
         f"{t('help_service', user_id=uid)}\n"
         "/status — bot status\n"
         "/about — legal notice\n"
-        "/lang en|ru — switch language\n"
+        "/lang en|ru|uz — switch language\n"
         "/cancel — cancel scan\n\n"
         f"⚠️ {t('help_footer', user_id=uid)}"
     )
@@ -413,8 +445,9 @@ async def set_bot_commands(bot: Bot) -> None:
         types.BotCommand(command="email", description="Email validation + MX"),
         types.BotCommand(command="weather", description="Current weather by city"),
         types.BotCommand(command="summary", description="Summarize last report with AI"),
+        types.BotCommand(command="ask", description="Ask the AI assistant"),
         types.BotCommand(command="timestamp", description="Current UTC/unix time"),
-        types.BotCommand(command="lang", description="Switch language en|ru"),
+        types.BotCommand(command="lang", description="Switch language en|ru|uz"),
         types.BotCommand(command="scapy", description="Scapy SYN scan"),
         types.BotCommand(command="scapyfrag", description="Fragmented Scapy SYN scan"),
         types.BotCommand(command="scapydecoy", description="Scapy SYN scan with decoys"),

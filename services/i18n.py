@@ -9,7 +9,7 @@ import os
 from typing import Optional
 
 DEFAULT_LANG = os.getenv("DEFAULT_LANG", "en").strip().lower()
-if DEFAULT_LANG not in ("en", "ru"):
+if DEFAULT_LANG not in ("en", "ru", "uz"):
     DEFAULT_LANG = "en"
 
 _user_langs: dict[int, str] = {}
@@ -19,18 +19,22 @@ _TRANSLATIONS = {
     "start_welcome": {
         "en": "👁 *Stealth scanner online.*\n\nChoose a category or type /help for the command list.",
         "ru": "👁 *Стелс-сканер онлайн.*\n\nВыбери категорию или напиши /help для списка команд.",
+        "uz": "👁 *Stealth skaner onlayn.*\n\nKategoriya tanlang yoki buyruqlar ro'yxati uchun /help yozing.",
     },
     "choose_category": {
         "en": "Choose a category:",
         "ru": "Выбери категорию:",
+        "uz": "Kategoriya tanlang:",
     },
     "unknown_command": {
         "en": "Unknown command.",
         "ru": "Неизвестная команда.",
+        "uz": "Noma'lum buyruq.",
     },
     "usage": {
         "en": "Usage",
         "ru": "Использование",
+        "uz": "Foydalanish",
     },
     "scan_only_authorized": {
         "en": "⚠️ Only scan targets you own or have permission to test.",
@@ -79,10 +83,12 @@ _TRANSLATIONS = {
     "lang_set": {
         "en": "Language set to English.",
         "ru": "Язык изменён на русский.",
+        "uz": "Til o'zbekchaga o'zgartirildi.",
     },
     "lang_usage": {
-        "en": "Usage: /lang en|ru",
-        "ru": "Использование: /lang en|ru",
+        "en": "Usage: /lang en|ru|uz",
+        "ru": "Использование: /lang en|ru|uz",
+        "uz": "Foydalanish: /lang en|ru|uz",
     },
     "help_header": {
         "en": "📖 *Available commands*",
@@ -160,12 +166,37 @@ _TRANSLATIONS = {
         "en": "Disk free",
         "ru": "Свободно на диске",
     },
+    "chat_hint": {
+        "en": "💬 Just type naturally, e.g. \"scan 1.1.1.1\", \"osint example.com\", or \"status\". Use /ask for AI questions.",
+        "ru": "💬 Просто напиши естественным языком, например: \"скан 1.1.1.1\", \"осинт example.com\" или \"статус\". Для вопросов к ИИ используй /ask.",
+        "uz": "💬 Oddiy yozing, masalan: \"scan 1.1.1.1\", \"osint example.com\" yoki \"status\". AI savollari uchun /ask.",
+    },
+    "ask_usage": {
+        "en": "Usage: /ask <question>\nExample: /ask What is nmap?",
+        "ru": "Использование: /ask <вопрос>\nПример: /ask Что такое nmap?",
+        "uz": "Foydalanish: /ask <savol>\nMisol: /ask nmap nima?",
+    },
+    "agent_request_logged": {
+        "en": "✅ Your request has been logged for the agent. They will reply when available.",
+        "ru": "✅ Твой запрос сохранён для агента. Ответим, как только будет возможность.",
+        "uz": "✅ So'rovingiz agent uchun saqlandi. Imkoniyat bo'lishi bilan javob beramiz.",
+    },
+    "agent_reply_default": {
+        "en": "🤖 I forwarded your message to the agent. Use /ask for AI questions or /help for commands.",
+        "ru": "🤖 Я передал твоё сообщение агенту. Для вопросов к ИИ используй /ask, для списка команд — /help.",
+        "uz": "🤖 Xabaringiz agentga yo'naltirildi. AI savollari uchun /ask, buyruqlar uchun /help.",
+    },
+    "unknown_command_help": {
+        "en": "I didn't understand that. Try typing naturally or use /help.",
+        "ru": "Не понял команду. Попробуй написать естественным языком или используй /help.",
+        "uz": "Tushunmadim. Oddiy yozing yoki /help dan foydalaning.",
+    },
 }
 
 
 def set_user_lang(user_id: int, lang: str) -> bool:
     lang = lang.lower().strip()
-    if lang not in ("en", "ru"):
+    if lang not in ("en", "ru", "uz"):
         return False
     _user_langs[user_id] = lang
     return True
