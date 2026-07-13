@@ -13,12 +13,16 @@ class ShellResult:
     timed_out: bool = False
 
 
+_MAX_OUTPUT_BYTES = 1_000_000  # cap per stream (~1 MB) to bound memory
+
+
 async def run_command(
     cmd: list[str],
     timeout: int = 120,
     cwd: Optional[str] = None,
     input_data: Optional[str] = None,
     cancellable: bool = False,
+    max_output_bytes: int = _MAX_OUTPUT_BYTES,
 ) -> ShellResult:
     """Run an external command safely (no shell=True).
 
@@ -28,6 +32,9 @@ async def run_command(
 
     When ``cancellable`` is set the running process is registered with
     ``scan_lock`` so that ``/cancel`` can terminate it mid-flight.
+
+    stdout/stderr are capped at ``max_output_bytes`` each so a pathological tool
+    (e.g. crt.sh JSON for a huge domain) can't blow up memory.
     """
     logger.info("Running command: %s", " ".join(cmd))
     proc = await asyncio.create_subprocess_exec(
@@ -59,10 +66,18 @@ async def run_command(
             scan_lock.clear_proc()
 
     return ShellResult(
-        stdout=stdout.decode("utf-8", errors="replace"),
-        stderr=stderr.decode("utf-8", errors="replace"),
+        stdout=_decode_capped(stdout, max_output_bytes),
+        stderr=_decode_capped(stderr, max_output_bytes),
         returncode=proc.returncode or 0,
     )
+
+
+def _decode_capped(raw: bytes, limit: int) -> str:
+    if len(raw) > limit:
+        raw = raw[:limit]
+        suffix = b"\n[output truncated]"
+        return raw.decode("utf-8", errors="replace") + suffix.decode()
+    return raw.decode("utf-8", errors="replace")
 
 
 class ScanLock:

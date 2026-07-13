@@ -10,6 +10,21 @@ from config import MAX_MESSAGE_LENGTH, RESULTS_DIR
 
 _last_report: Dict[int, str] = {}
 _MAX_TRACKED_USERS = 16
+_MAX_RESULT_FILES = 200  # keep only the newest N reports on disk
+
+
+def _prune_results(max_files: int = _MAX_RESULT_FILES) -> None:
+    """Delete the oldest report files so results/ can't grow unbounded."""
+    files = sorted(
+        Path(RESULTS_DIR).glob("*.txt"),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    for stale in files[max_files:]:
+        try:
+            stale.unlink()
+        except OSError:
+            pass
 
 
 def save_report(prefix: str, target: str, content: str) -> Path:
@@ -17,6 +32,7 @@ def save_report(prefix: str, target: str, content: str) -> Path:
     filename = f"{prefix}_{target}_{timestamp}.txt"
     path = Path(RESULTS_DIR) / filename
     path.write_text(content, encoding="utf-8")
+    _prune_results()
     return path
 
 

@@ -5,6 +5,36 @@ from services.shell import run_command
 from services.validators import ValidationError, validate_domain, validate_ipv4
 
 
+def parse_crtsh(raw: str, limit: int = 200) -> str:
+    """Turn crt.sh JSON into a deduplicated, sorted subdomain list.
+
+    Falls back to the raw text if it isn't the JSON we expect, so a crt.sh
+    outage/HTML error page is still visible instead of silently swallowed.
+    """
+    try:
+        data = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return raw.strip() or "No crt.sh data."
+
+    names = set()
+    for row in data if isinstance(data, list) else []:
+        value = row.get("name_value", "") if isinstance(row, dict) else ""
+        for name in value.splitlines():
+            name = name.strip().lstrip("*.").lower()
+            if name:
+                names.add(name)
+
+    if not names:
+        return "No certificates found on crt.sh."
+
+    ordered = sorted(names)
+    shown = ordered[:limit]
+    out = "\n".join(shown)
+    if len(ordered) > limit:
+        out += f"\n[+{len(ordered) - limit} more]"
+    return out
+
+
 async def ip_info(ip: str, timeout: int = 30) -> str:
     """Fetch public IP geolocation via ip-api.com (free, no key)."""
     try:
