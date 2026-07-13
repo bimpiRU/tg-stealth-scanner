@@ -6,7 +6,14 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 
 import config
-from handlers import admin_router, osint_router, recon_router, scan_router, utils_router
+from handlers import (
+    admin_router,
+    osint_router,
+    recon_router,
+    scan_router,
+    stealth_router,
+    utils_router,
+)
 from middlewares import AdminMiddleware, RateLimitMiddleware
 from utils.logger import logger
 
@@ -44,6 +51,7 @@ def main() -> None:
     dp.include_router(osint_router)
     dp.include_router(recon_router)
     dp.include_router(scan_router)
+    dp.include_router(stealth_router)
     dp.include_router(utils_router)
 
     dp.startup.register(on_startup)

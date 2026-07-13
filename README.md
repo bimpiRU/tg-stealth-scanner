@@ -15,6 +15,7 @@
 
 - 🔍 **OSINT** — `crt.sh`, `whois`, DNS-записи, `sublist3r`, HTTP-заголовки, SSL-сертификаты, Wayback Machine
 - 🛰 **Сканирование** — скрытый SYN-скан `nmap -sS -T2 -F` и расширенное сканирование по подтверждению
+- 🥷 **Стелс** — Scapy SYN-скан, фрагментация, decoy-источники, эвейзивный nmap, HTTP(S)-прокси
 - 🌐 **Сеть** — геолокация IP, ping, traceroute, reverse DNS
 - 🧰 **Утилиты** — генератор паролей, UUID, хеши, base64, URL-кодирование, погода, проверка email
 - 🧠 **AI-суммаризация** — краткий пересказ отчётов через любой OpenAI-совместимый API
@@ -73,6 +74,7 @@ docker compose logs -f
 |-----------|---------|
 | 🔍 OSINT | `/osint`, `/dns`, `/subdomains`, `/headers`, `/ssl`, `/wayback` |
 | 🛰 Scan | `/scan`, `/scanfull`, `/cancel` |
+| 🥷 Stealth | `/scapy`, `/scapyfrag`, `/scapydecoy`, `/evade`, `/proxyinfo`, `/proxytest` |
 | 🌐 Network | `/ipinfo`, `/ping`, `/traceroute`, `/reverseip` |
 | 🧰 Tools | `/password`, `/uuid`, `/hash`, `/b64`, `/b64decode`, `/urlencode`, `/email`, `/weather`, `/timestamp`, `/summary` |
 
@@ -103,6 +105,21 @@ AI_MAX_TOKENS=800
 
 ---
 
+## 🥷 Стелс и прокси
+
+Для HTTP(S)-запросов (не для raw nmap/scapy) можно настроить прокси и джиттер:
+
+```env
+PROXY_URL=http://user:pass@host:port
+PROXY_TYPE=http
+EVADE_MIN_DELAY=0.5
+EVADE_MAX_DELAY=2.0
+```
+
+Scapy-сканы (`/scapy`, `/scapyfrag`, `/scapydecoy`) работают на уровне raw-пакетов и не используют прокси. Для полной анонимизации raw-сканов нужен VPN/Tor на уровне сети хоста.
+
+---
+
 ## 🛡 Безопасность, приватность и легальность
 
 - 🔑 **Токены и ID не хранятся в репозитории.** Все секреты читаются из файла `.env`, который добавлен в `.gitignore`.
@@ -123,9 +140,9 @@ tg_stealth_scanner/
 ├── Dockerfile          # Сборка на python:3.12-slim + nmap/whois/curl/dnsutils
 ├── docker-compose.yml  # Запуск контейнера
 ├── .env.example        # Шаблон переменных (без реальных секретов)
-├── handlers/           # Обработчики команд
+├── handlers/           # Обработчики команд (admin, osint, recon, scan, utils, + stealth)
 ├── middlewares/        # Фильтр админа и rate-limit
-├── services/           # Сканеры, валидаторы, AI, отчёты
+├── services/           # Сканеры, валидаторы, AI, отчёты, + stealth/proxy/scapy
 ├── scripts/            # Health-check + внешний мониторинг + автозапуск Windows
 └── utils/              # Логгер
 ```

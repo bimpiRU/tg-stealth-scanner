@@ -56,10 +56,11 @@ def _main_menu_keyboard() -> types.InlineKeyboardMarkup:
                 types.InlineKeyboardButton(text="🧰 Tools", callback_data=Nav(to="tools").pack()),
             ],
             [
+                types.InlineKeyboardButton(text="🥷 Stealth", callback_data=Nav(to="stealth").pack()),
                 types.InlineKeyboardButton(text="ℹ️ Status", callback_data=Run(key="status").pack()),
-                types.InlineKeyboardButton(text="📖 Help", callback_data=Nav(to="help").pack()),
             ],
             [
+                types.InlineKeyboardButton(text="📖 Help", callback_data=Nav(to="help").pack()),
                 types.InlineKeyboardButton(text="⚠️ Legal", callback_data=Run(key="about").pack()),
             ],
         ]
@@ -149,6 +150,26 @@ def _tools_keyboard() -> types.InlineKeyboardMarkup:
     )
 
 
+def _stealth_keyboard() -> types.InlineKeyboardMarkup:
+    return types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(text="🕵️ /scapy", callback_data=Hint(key="scapy").pack()),
+                types.InlineKeyboardButton(text="💥 /scapyfrag", callback_data=Hint(key="scapyfrag").pack()),
+            ],
+            [
+                types.InlineKeyboardButton(text="👻 /scapydecoy", callback_data=Hint(key="scapydecoy").pack()),
+                types.InlineKeyboardButton(text="🥷 /evade", callback_data=Hint(key="evade").pack()),
+            ],
+            [
+                types.InlineKeyboardButton(text="🌐 /proxyinfo", callback_data=Run(key="proxyinfo").pack()),
+                types.InlineKeyboardButton(text="🧪 /proxytest", callback_data=Run(key="proxytest").pack()),
+            ],
+            _back_button(),
+        ]
+    )
+
+
 _HINTS = {
     "osint": "🔍 Type: `/osint <domain>`\nExample: `/osint example.com`",
     "dns": "🌐 Type: `/dns <domain>`\nExample: `/dns example.com`",
@@ -168,6 +189,10 @@ _HINTS = {
     "urlencode": "🔗 Type: `/urlencode <text>`\nExample: `/urlencode hello world`",
     "email": "📧 Type: `/email <email>`\nExample: `/email user@example.com`",
     "weather": "🌤 Type: `/weather <city>`\nExample: `/weather Tashkent`",
+    "scapy": "🕵️ Type: `/scapy <IP> [ports]`\nExamples:\n/scapy 1.1.1.1\n/scapy 1.1.1.1 80,443\n/scapy 1.1.1.1 1-1000",
+    "scapyfrag": "💥 Type: `/scapyfrag <IP> [ports]`\nFragmented SYN scan to evade simple IDS.",
+    "scapydecoy": "👻 Type: `/scapydecoy <IP> [ports]`\nSends decoy packets from random source IPs.",
+    "evade": "🥷 Type: `/evade <IP>`\nnmap with randomize-hosts, spoof-mac, source-port, data-length.",
 }
 
 _NAV_SCREENS = {
@@ -179,6 +204,7 @@ _NAV_SCREENS = {
     ),
     "network": ("🌐 *Network menu*\n\nSelect a command or type it manually:", _network_keyboard),
     "tools": ("🧰 *Utility tools*\n\nSelect a command:", _tools_keyboard),
+    "stealth": ("🥷 *Stealth menu*\n\nAdvanced scans, evasion and proxy tools:", _stealth_keyboard),
     "main": ("👁 *Stealth scanner online.*\n\nChoose a category:", _main_menu_keyboard),
 }
 
@@ -230,6 +256,12 @@ async def cb_run_command(callback: types.CallbackQuery, callback_data: Run):
     elif key == "summary":
         from handlers.utils import cmd_summary
         await cmd_summary(callback.message)
+    elif key == "proxyinfo":
+        from handlers.stealth import cmd_proxyinfo
+        await cmd_proxyinfo(callback.message)
+    elif key == "proxytest":
+        from handlers.stealth import cmd_proxytest
+        await cmd_proxytest(callback.message)
     elif key == "cancel":
         await cmd_cancel(callback.message)
     else:
@@ -265,6 +297,13 @@ async def cmd_help(message: types.Message):
         "/email <email> — email validation + MX\n"
         "/weather <city> — current weather\n"
         "/timestamp — current time\n\n"
+        "*Stealth*\n"
+        "/scapy <IP> [ports] — Scapy SYN scan\n"
+        "/scapyfrag <IP> [ports] — fragmented SYN scan\n"
+        "/scapydecoy <IP> [ports] — SYN scan with decoys\n"
+        "/evade <IP> — evasive nmap\n"
+        "/proxyinfo — proxy config\n"
+        "/proxytest — test proxy\n\n"
         "*AI*\n"
         "/summary — summarize the last report (configure AI_API_KEY)\n\n"
         "*Service*\n"
@@ -334,6 +373,12 @@ async def set_bot_commands(bot: Bot) -> None:
         types.BotCommand(command="weather", description="Current weather by city"),
         types.BotCommand(command="summary", description="Summarize last report with AI"),
         types.BotCommand(command="timestamp", description="Current UTC/unix time"),
+        types.BotCommand(command="scapy", description="Scapy SYN scan"),
+        types.BotCommand(command="scapyfrag", description="Fragmented Scapy SYN scan"),
+        types.BotCommand(command="scapydecoy", description="Scapy SYN scan with decoys"),
+        types.BotCommand(command="evade", description="Evasive nmap scan"),
+        types.BotCommand(command="proxyinfo", description="Show proxy config"),
+        types.BotCommand(command="proxytest", description="Test proxy connectivity"),
         types.BotCommand(command="status", description="Bot status"),
         types.BotCommand(command="about", description="Legal notice"),
         types.BotCommand(command="cancel", description="Cancel scan"),
