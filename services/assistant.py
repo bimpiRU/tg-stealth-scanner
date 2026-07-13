@@ -5,6 +5,7 @@ entries in ``_INTENT_PATTERNS``.
 """
 
 import json
+import os
 import re
 from datetime import datetime, timezone
 from typing import Optional
@@ -48,6 +49,21 @@ _ASSISTANT_PROMPT = (
 )
 
 AGENT_INBOX_PATH = BASE_DIR / "data" / "agent_inbox.jsonl"
+_MAX_INBOX_LINES = int(os.getenv("MAX_AGENT_INBOX_LINES", "1000"))
+
+
+def _rotate_inbox(max_lines: int = _MAX_INBOX_LINES) -> None:
+    """Keep the agent inbox JSONL from growing unbounded."""
+    if not AGENT_INBOX_PATH.exists():
+        return
+    try:
+        lines = AGENT_INBOX_PATH.read_text(encoding="utf-8").splitlines()
+        if len(lines) <= max_lines:
+            return
+        kept = lines[-max_lines:]
+        AGENT_INBOX_PATH.write_text("\n".join(kept) + "\n", encoding="utf-8")
+    except OSError:
+        pass
 
 
 def parse_intent(text: str) -> dict:
@@ -140,9 +156,25 @@ async def ask_ai(question: str) -> Optional[str]:
         return f"AI ask failed: {exc}"
 
 
+async def ask_ai_local(question: str) -> Optional[str]:
+    """Ask the local Ollama model first; fall back to the remote AI if unavailable."""
+    from services import orchestrator
+
+    try:
+        if await orchestrator.is_available():
+            answer = await orchestrator.chat(question)
+            if answer and not answer.startswith("Ollama"):
+                return answer
+    except Exception as exc:
+        logger.debug("Local AI unavailable, falling back: %s", exc)
+
+    return await ask_ai(question)
+
+
 def log_agent_request(user_id: int, text: str) -> None:
     """Append an agent request to the JSONL inbox."""
     AGENT_INBOX_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _rotate_inbox()
     entry = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "user_id": user_id,

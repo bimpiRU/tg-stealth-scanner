@@ -49,7 +49,7 @@ def validate_email(value: str) -> str:
     return value
 
 
-def validate_ipv4(value: str, allow_private: bool = True) -> str:
+def validate_ipv4(value: str, allow_private: bool = False) -> str:
     value = value.strip()
     if not value:
         raise ValidationError("IP address is empty.")

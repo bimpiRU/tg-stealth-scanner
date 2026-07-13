@@ -31,6 +31,13 @@ AI_BASE_URL = os.getenv("AI_BASE_URL", "https://api.openai.com/v1")
 AI_MODEL = os.getenv("AI_MODEL", "gpt-4o-mini")
 AI_MAX_TOKENS = int(os.getenv("AI_MAX_TOKENS", "800"))
 
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://ollama:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "deepseek-r1:7b")
+OLLAMA_TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT", "120"))
+
+AGENT_MAX_ITERATIONS = int(os.getenv("AGENT_MAX_ITERATIONS", "5"))
+DB_PATH = Path(os.getenv("DB_PATH", BASE_DIR / "data" / "osint.db"))
+
 if not BOT_TOKEN or BOT_TOKEN == "твой_токен_из_BotFather":
     raise ValueError("Set a real BOT_TOKEN in the .env file before starting the bot.")
 

@@ -1,0 +1,19 @@
+services:
+  - type: worker
+    name: tg-stealth-scanner
+    runtime: docker
+    plan: free
+    env: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: BOT_TOKEN
+        sync: false
+      - key: ADMIN_ID
+        sync: false
+      - key: ADMIN_USERNAME
+        sync: false
+    region: frankfurt
+    buildCommand: ""
+    startCommand: "python -u bot.py"

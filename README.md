@@ -13,7 +13,7 @@
 
 ## ✨ Возможности
 
-- 🔍 **OSINT** — `crt.sh`, `whois`, DNS-записи, `sublist3r`, HTTP-заголовки, SSL-сертификаты, Wayback Machine
+- 🔍 **OSINT** — `crt.sh`, `whois`, DNS-записи, `sublist3r`, HTTP-заголовки, SSL-сертификаты, Wayback Machine, а также `sherlock`, `maigret`, `subfinder`, `amass`, `httpx`, `katana`, `whatweb`, `exiftool` и `nuclei`
 - 🛰 **Сканирование** — скрытый SYN-скан `nmap -sS -T2 -F` и расширенное сканирование по подтверждению
 - 🥷 **Стелс** — Scapy SYN-скан, фрагментация, decoy-источники, эвейзивный nmap, HTTP(S)-прокси, авто-поиск публичных прокси
 - 🌐 **Сеть** — геолокация IP, ping, traceroute, reverse DNS, обнаружение хостов в подсети (`/discover`)
@@ -79,8 +79,8 @@ docker compose logs -f
 | 🛰 Scan | `/scan`, `/scanfull`, `/cancel` |
 | 🥷 Stealth | `/scapy`, `/scapyfrag`, `/scapydecoy`, `/evade`, `/discover`, `/vulns`, `/quickvulns`, `/proxyinfo`, `/proxytest`, `/proxyfind`, `/proxyfetch` |
 | 🌐 Network | `/ipinfo`, `/ping`, `/traceroute`, `/reverseip` |
-| 🧰 Tools | `/password`, `/uuid`, `/hash`, `/b64`, `/b64decode`, `/urlencode`, `/email`, `/weather`, `/timestamp`, `/summary` |
-| ⚙️ Service | `/status`, `/about`, `/lang en\|ru` |
+| 🧠 AI | `/agent`, `/ask`, `/summary` |
+| ⚙️ Service | `/status`, `/about`, `/lang en\|ru\|uz` |
 
 Примеры:
 
@@ -90,6 +90,8 @@ docker compose logs -f
 /discover 192.168.1.0/24
 /vulns 1.1.1.1
 /proxyfetch
+/agent просканируй 1.1.1.1 и найди уязвимости
+/ask что такое nmap
 /lang ru
 /weather Tashkent
 /email user@example.com
@@ -110,6 +112,45 @@ AI_MAX_TOKENS=800
 ```
 
 После любого скана используй `/summary` — бот кратко перескажет ключевые находки.
+
+---
+
+## 🧠 Локальная AI-модель Ollama / DeepSeek
+
+Помимо OpenAI-совместимых API, бот может использовать локальную модель через [Ollama](https://ollama.com). По умолчанию поднимается сервис `ollama` внутри `docker-compose.yml` с моделью **DeepSeek-R1 7B**.
+
+### Минимальные требования
+
+- CPU: современный x86_64 процессор (для CPU-режима).
+- RAM: минимум 8 ГБ, рекомендуется 16 ГБ+
+- Диск: ~5 ГБ на модель `deepseek-r1:7b` (загружается при первом запуске).
+- GPU (опционально): NVIDIA GPU с установленным `nvidia-container-toolkit`. Блок `deploy.resources.reservations.devices` в `docker-compose.yml` активирует GPU; на CPU-only хосте Docker Compose проигнорирует его.
+
+### Переменные окружения
+
+```env
+OLLAMA_HOST=http://ollama:11434
+OLLAMA_MODEL=deepseek-r1:7b
+OLLAMA_TIMEOUT=120
+AGENT_MAX_ITERATIONS=5
+DB_PATH=/app/data/osint.db
+```
+
+### Загрузка модели
+
+Модель можно скачать автоматически:
+
+```bash
+docker compose exec tg-stealth-scanner python scripts/pull_model.py
+```
+
+Или вручную через CLI контейнера `ollama`:
+
+```bash
+docker compose exec ollama ollama pull deepseek-r1:7b
+```
+
+Сервис `ollama` доступен только внутри сети Compose (порт `11434` не опубликован наружу). Контейнер бота ждёт, пока `ollama` станет `healthy`, прежде чем запускаться.
 
 ---
 
@@ -154,14 +195,14 @@ EVADE_MAX_DELAY=2.0
 tg_stealth_scanner/
 ├── bot.py              # Точка входа, polling
 ├── config.py           # Конфигурация из env
-├── Dockerfile          # Сборка на python:3.12-slim + nmap/whois/curl/dnsutils
-├── docker-compose.yml  # Запуск контейнера
+├── Dockerfile          # Сборка на python:3.12-slim-bookworm + nmap/whois/curl/dnsutils + Go/Python OSINT tools
+├── docker-compose.yml  # Запуск контейнера + Ollama
 ├── .env.example        # Шаблон переменных (без реальных секретов)
-├── data/               # Шаблон списка прокси (proxies.example.txt)
-├── handlers/           # Обработчики команд (admin, osint, recon, scan, utils, stealth)
+├── data/               # Шаблон списка прокси (proxies.example.txt) и SQLite база
+├── handlers/           # Обработчики команд (admin, agent, chat, osint, recon, scan, utils, stealth)
 ├── middlewares/        # Фильтр админа и rate-limit
-├── services/           # Сканеры, валидаторы, AI, отчёты, stealth/proxy/scapy/vuln
-├── scripts/            # Health-check + внешний мониторинг + автозапуск Windows
+├── services/           # Сканеры, валидаторы, AI/Ollama, БД, отчёты, stealth/proxy/scapy/vuln
+├── scripts/            # Health-check + pull_model + внешний мониторинг + автозапуск Windows
 └── utils/              # Логгер
 ```
 

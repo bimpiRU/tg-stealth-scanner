@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 from aiogram import types
 
 from config import MAX_MESSAGE_LENGTH, RESULTS_DIR
+from utils.logger import logger
 
 
 _last_report: Dict[int, str] = {}
@@ -27,12 +28,47 @@ def _prune_results(max_files: int = _MAX_RESULT_FILES) -> None:
             pass
 
 
-def save_report(prefix: str, target: str, content: str) -> Path:
+def target_id_for(value: str, type_: str) -> int:
+    """Get or create a target id for the given value and type."""
+    from services import db
+
+    return db.get_or_create_target(value, type_)
+
+
+def save_report(
+    prefix: str,
+    target: str,
+    content: str,
+    save_to_db: bool = False,
+    target_type: Optional[str] = None,
+    target_id: Optional[int] = None,
+) -> Path:
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     filename = f"{prefix}_{target}_{timestamp}.txt"
     path = Path(RESULTS_DIR) / filename
     path.write_text(content, encoding="utf-8")
     _prune_results()
+
+    if save_to_db:
+        if target_id is None and target_type:
+            try:
+                target_id = target_id_for(target, target_type)
+            except Exception:
+                logger.exception("Failed to resolve target_id for %s", target)
+        if target_id is not None:
+            try:
+                from services import db
+
+                db.add_finding(
+                    target_id=target_id,
+                    category=prefix,
+                    value=target,
+                    source=prefix,
+                    raw_text=content,
+                )
+            except Exception:
+                logger.exception("Failed to save finding for %s", target)
+
     return path
 
 

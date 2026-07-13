@@ -55,15 +55,15 @@ def _main_menu_keyboard() -> types.InlineKeyboardMarkup:
             ],
             [
                 types.InlineKeyboardButton(text="🌐 Network", callback_data=Nav(to="network").pack()),
+                types.InlineKeyboardButton(text="🤖 Agent", callback_data="run_agent"),
+            ],
+            [
                 types.InlineKeyboardButton(text="🧰 Tools", callback_data=Nav(to="tools").pack()),
+                types.InlineKeyboardButton(text="⚙️ Advanced", callback_data=Nav(to="stealth").pack()),
             ],
             [
-                types.InlineKeyboardButton(text="🥷 Stealth", callback_data=Nav(to="stealth").pack()),
                 types.InlineKeyboardButton(text="ℹ️ Status", callback_data=Run(key="status").pack()),
-            ],
-            [
                 types.InlineKeyboardButton(text="📖 Help", callback_data=Nav(to="help").pack()),
-                types.InlineKeyboardButton(text="🤖 AI", callback_data=Nav(to="help").pack()),
             ],
             [
                 types.InlineKeyboardButton(text="⚠️ Legal", callback_data=Run(key="about").pack()),
@@ -87,10 +87,6 @@ def _osint_keyboard() -> types.InlineKeyboardMarkup:
                 types.InlineKeyboardButton(text="🧩 /subdomains", callback_data=Hint(key="subdomains").pack()),
                 types.InlineKeyboardButton(text="📡 /headers", callback_data=Hint(key="headers").pack()),
             ],
-            [
-                types.InlineKeyboardButton(text="🔒 /ssl", callback_data=Hint(key="ssl").pack()),
-                types.InlineKeyboardButton(text="📚 /wayback", callback_data=Hint(key="wayback").pack()),
-            ],
             _back_button(),
         ]
     )
@@ -103,9 +99,6 @@ def _scan_keyboard() -> types.InlineKeyboardMarkup:
                 types.InlineKeyboardButton(text="🛰 /scan", callback_data=Hint(key="scan").pack()),
                 types.InlineKeyboardButton(text="🚀 /scanfull", callback_data=Hint(key="scanfull").pack()),
             ],
-            [
-                types.InlineKeyboardButton(text="⛔ /cancel", callback_data=Run(key="cancel").pack()),
-            ],
             _back_button(),
         ]
     )
@@ -117,10 +110,6 @@ def _network_keyboard() -> types.InlineKeyboardMarkup:
             [
                 types.InlineKeyboardButton(text="🌍 /ipinfo", callback_data=Hint(key="ipinfo").pack()),
                 types.InlineKeyboardButton(text="🏓 /ping", callback_data=Hint(key="ping").pack()),
-            ],
-            [
-                types.InlineKeyboardButton(text="🛤 /traceroute", callback_data=Hint(key="traceroute").pack()),
-                types.InlineKeyboardButton(text="🔄 /reverseip", callback_data=Hint(key="reverseip").pack()),
             ],
             _back_button(),
         ]
@@ -212,15 +201,15 @@ _HINTS = {
 }
 
 _NAV_SCREENS = {
-    "osint": ("🔍 *OSINT menu*\n\nSelect a command or type it manually:", _osint_keyboard),
+    "osint": ("🔍 *OSINT menu*\n\nBasic passive recon. More tools in /help.", _osint_keyboard),
     "scan": (
         "🛰 *Scan menu*\n\nSelect a command or type it manually:\n\n"
         "⚠️ Only scan targets you own or have permission to test.",
         _scan_keyboard,
     ),
-    "network": ("🌐 *Network menu*\n\nSelect a command or type it manually:", _network_keyboard),
-    "tools": ("🧰 *Utility tools*\n\nSelect a command:", _tools_keyboard),
-    "stealth": ("🥷 *Stealth menu*\n\nAdvanced scans, evasion, proxies and vulnerability discovery:", _stealth_keyboard),
+    "network": ("🌐 *Network menu*\n\nBasic network utilities.", _network_keyboard),
+    "tools": ("🧰 *Utility tools*\n\nHandy helpers.", _tools_keyboard),
+    "stealth": ("⚙️ *Advanced menu*\n\nStealth scans, evasion, proxies and vuln discovery.", _stealth_keyboard),
     "main": ("👁 *Stealth scanner online.*\n\nChoose a category:", _main_menu_keyboard),
 }
 
@@ -374,6 +363,7 @@ async def cmd_help(message: types.Message):
         f"{t('help_ai', user_id=uid)}\n"
         "/summary — summarize the last report (configure AI_API_KEY)\n"
         "/ask <question> — ask the AI assistant\n"
+        "/agent <task> — autonomous AI agent with tools (DeepSeek/Ollama)\n"
         f"{t('chat_hint', user_id=uid)}\n\n"
         f"{t('help_service', user_id=uid)}\n"
         "/status — bot status\n"
@@ -446,6 +436,7 @@ async def set_bot_commands(bot: Bot) -> None:
         types.BotCommand(command="weather", description="Current weather by city"),
         types.BotCommand(command="summary", description="Summarize last report with AI"),
         types.BotCommand(command="ask", description="Ask the AI assistant"),
+        types.BotCommand(command="agent", description="Run autonomous AI agent"),
         types.BotCommand(command="timestamp", description="Current UTC/unix time"),
         types.BotCommand(command="lang", description="Switch language en|ru|uz"),
         types.BotCommand(command="scapy", description="Scapy SYN scan"),

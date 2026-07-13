@@ -5,6 +5,7 @@ results/
 logs/
 data/proxies.txt
 data/agent_inbox.jsonl
+data/osint.db
 *.log
 .venv/
 .venv_test/

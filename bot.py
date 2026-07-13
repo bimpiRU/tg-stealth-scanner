@@ -8,6 +8,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 import config
 from handlers import (
     admin_router,
+    agent_router,
     osint_router,
     recon_router,
     scan_router,
@@ -16,6 +17,7 @@ from handlers import (
 )
 from handlers.chat import chat_router
 from middlewares import AdminMiddleware, RateLimitMiddleware
+from services import db
 from utils.logger import logger
 
 
@@ -23,12 +25,24 @@ from handlers.admin import set_bot_commands
 
 
 async def on_startup(bot: Bot) -> None:
+    db.init_db()
+    db.prune_db()
     logger.info("Bot started. Admin ID: %s", config.ADMIN_ID)
     await set_bot_commands(bot)
     await bot.send_message(
         config.ADMIN_ID,
         "👁 Stealth scanner is online and ready.",
     )
+
+
+async def _periodic_cleanup() -> None:
+    """Run DB/report pruning in the background every hour."""
+    while True:
+        await asyncio.sleep(3600)
+        try:
+            db.prune_db()
+        except Exception as exc:
+            logger.warning("Periodic DB cleanup failed: %s", exc)
 
 
 async def on_shutdown(bot: Bot) -> None:
@@ -49,6 +63,7 @@ def main() -> None:
     dp.message.middleware(RateLimitMiddleware())
 
     dp.include_router(admin_router)
+    dp.include_router(agent_router)
     dp.include_router(osint_router)
     dp.include_router(recon_router)
     dp.include_router(scan_router)
@@ -67,6 +82,7 @@ def main() -> None:
         loop.add_signal_handler(sig, lambda: asyncio.create_task(dp.stop_polling()))
 
     try:
+        loop.create_task(_periodic_cleanup())
         loop.run_until_complete(dp.start_polling(bot))
     except Exception as exc:
         logger.exception("Fatal error: %s", exc)
