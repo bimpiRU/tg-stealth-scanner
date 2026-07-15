@@ -84,8 +84,13 @@ class ValidateIpv4Tests(unittest.TestCase):
     def test_accepts_public(self):
         self.assertEqual(validate_ipv4("1.1.1.1", allow_private=False), "1.1.1.1")
 
-    def test_allows_private_by_default(self):
-        self.assertEqual(validate_ipv4("192.168.1.1"), "192.168.1.1")
+    def test_private_rejected_by_default(self):
+        # Default is now allow_private=False (config ALLOW_PRIVATE_IPS off).
+        with self.assertRaises(ValidationError):
+            validate_ipv4("192.168.1.1")
+
+    def test_allows_private_when_requested(self):
+        self.assertEqual(validate_ipv4("192.168.1.1", allow_private=True), "192.168.1.1")
 
     def test_rejects_private_when_disallowed(self):
         for private in ("10.0.0.1", "192.168.0.5", "172.16.0.1", "127.0.0.1"):
